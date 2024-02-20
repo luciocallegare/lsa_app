@@ -17,7 +17,7 @@ import cv2
 import mediapipe as mp
 import numpy as np
 import json
-from model import TensorFlowModel
+from keras.models import load_model
 
 MEASURES_MODEL = 224
 N_FRAMES = 20
@@ -35,7 +35,7 @@ with mp_hands.Hands(
         def build(self):
             self.pred_state = False
             # Main layout components 
-            self.web_cam = Image(size_hint=(1,1))
+            self.web_cam = Image(size_hint=(1,1), fit_mode = 'fill')
             self.button = Button(text="Empezar traducción",on_press = self.togglePrediction, size_hint=(1,.1))
             self.sign_label = Label(text="", size_hint=(1,.1))
 
@@ -46,10 +46,9 @@ with mp_hands.Hands(
             layout.add_widget(self.button)
 
             # Load tensorflow/keras model
-            self.model = TensorFlowModel()
-            self.model.load('model.tflite')
+            self.model = load_model('./_internal/modelConvLSTM')
             self.threshold = 0.5
-            f = open('./dataset.json',encoding='utf-8')
+            f = open('./_internal/dataset.json',encoding='utf-8')
             self.label = json.load(f)
             # Setup video capture device
             self.capture = cv2.VideoCapture(0)
@@ -119,8 +118,7 @@ with mp_hands.Hands(
                     self.lastSign = {}
                 if len(self.sequence) == N_FRAMES:
                     cantHands = len(results.multi_hand_landmarks)
-                    reshape_seq = np.expand_dims(self.sequence,(0,4))
-                    probArray =  self.model.pred(reshape_seq)
+                    probArray =  self.model.predict(np.expand_dims(self.sequence,0))
                     idGesture =  np.argmax(probArray)
                     probPred = probArray[0][idGesture]
                     cantHandsPred = 1 if self.label[idGesture]['handsUsed'] != 'B' else 2
